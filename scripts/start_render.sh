@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Ensure this script is executable even if the image was built without chmod
+if [ ! -x "$0" ]; then
+  chmod +x "$0" 2>/dev/null || true
+fi
+
 # Render provides PORT. n8n expects N8N_PORT. Map it.
 export N8N_PORT=${PORT:-5678}
 

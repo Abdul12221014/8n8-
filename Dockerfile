@@ -8,7 +8,6 @@ COPY scripts ./scripts
 
 # Ensure start script exists at the expected path and is executable
 COPY scripts/start_render.sh /data/scripts/start_render.sh
-RUN chmod +x /data/scripts/start_render.sh
 
 # Default environment values can be overridden in Render dashboard
 ENV N8N_DIAGNOSTICS_ENABLED=false \
