@@ -16,7 +16,7 @@ ENV N8N_DIAGNOSTICS_ENABLED=false \
 # Expose is informational only for Docker; Render routes to $PORT.
 EXPOSE 5678
 
-# Start n8n. On Render, set env N8N_PORT=$PORT, N8N_PROTOCOL=https, N8N_HOST and WEBHOOK_URL.
-CMD ["n8n", "start"]
+# Start via wrapper to map PORT -> N8N_PORT on Render
+ENTRYPOINT ["/bin/bash", "/data/scripts/start_render.sh"]
 
 

@@ -11,8 +11,6 @@ services:
         mountPath: /home/node/.n8n
         sizeGB: 1
     envVars:
-      - key: N8N_PORT
-        value: "10000" # Render sets PORT; we override below with fromService
       - key: N8N_PROTOCOL
         value: https
       - key: N8N_HOST
@@ -25,11 +23,6 @@ services:
           type: web
           name: n8n-tutor
           property: url
-      - key: PORT
-        fromService:
-          type: web
-          name: n8n-tutor
-          property: port
       - key: N8N_EDITOR_BASE_URL
         fromService:
           type: web
