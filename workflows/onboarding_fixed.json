@@ -1,0 +1,97 @@
+{
+  "name": "Onboarding - Save User Preferences",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "onboard",
+        "responseData": "",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "response": false
+        }
+      },
+      "id": "Webhook_Onboard",
+      "name": "Webhook /onboard",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://api.airtable.com/v0/{{$env.AIRTABLE_BASE_ID}}/Users",
+        "jsonParameters": true,
+        "options": {
+          "fullResponse": false
+        },
+        "sendHeaders": true,
+        "headerParametersJson": "={\n  \"Authorization\": \"Bearer {{$env.AIRTABLE_API_KEY}}\",\n  \"Content-Type\": \"application/json\"\n}",
+        "sendBody": true,
+        "bodyParametersJson": "={\n  \"fields\": {\n    \"user_id\": \"{{$json.user_id}}\",\n    \"native_language\": \"{{$json.native_language}}\",\n    \"target_language\": \"{{$json.target_language}}\",\n    \"topic\": \"{{$json.topic}}\",\n    \"ai_mood\": \"{{$json.ai_mood}}\"\n  }\n}"
+      },
+      "id": "HTTP_Airtable_Create",
+      "name": "HTTP Airtable Create User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        520,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "responseMode": "onReceived",
+        "responseData": "={\n  \"status\": \"ok\",\n  \"message\": \"Preferences saved\",\n  \"user_id\": \"{{$node['Webhook /onboard'].json['user_id']}}\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "Respond_Onboard",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook /onboard": {
+      "main": [
+        [
+          {
+            "node": "HTTP Airtable Create User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Airtable Create User": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": ""
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null
+}

@@ -1,0 +1,272 @@
+{
+  "name": "Conversational Tutor - JSON + Audio",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tutor",
+        "responseData": "",
+        "options": {
+          "response": false
+        }
+      },
+      "id": "Webhook_Tutor",
+      "name": "Webhook /tutor",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            { "name": "user_id", "value": "={{$json[\"user_id\"]}}" },
+            { "name": "message", "value": "={{$json[\"message\"]}}" },
+            { "name": "now_iso", "value": "={{$now}}" }
+          ]
+        }
+      },
+      "id": "Set_Normalize_Tutor",
+      "name": "Set Normalize",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        500,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://api.airtable.com/v0/{{$env.AIRTABLE_BASE_ID}}/Messages",
+        "jsonParameters": true,
+        "options": {
+          "fullResponse": false
+        },
+        "sendHeaders": true,
+        "headerParametersJson": "={\n  \"Authorization\": \"Bearer {{$env.AIRTABLE_API_KEY}}\",\n  \"Content-Type\": \"application/json\"\n}",
+        "sendBody": true,
+        "bodyParametersJson": "={\n  \"fields\": {\n    \"user_id\": \"{{$json.user_id}}\",\n    \"role\": \"user\",\n    \"content\": \"{{$json.message}}\"\n  }\n}"
+      },
+      "id": "HTTP_Save_User_Message",
+      "name": "HTTP Save User Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        760,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "GET",
+        "url": "https://api.airtable.com/v0/{{$env.AIRTABLE_BASE_ID}}/Users?filterByFormula={{encodeURIComponent('{user_id}=' + $json.user_id)}}&maxRecords=1",
+        "jsonParameters": false,
+        "options": {
+          "fullResponse": false
+        },
+        "sendHeaders": true,
+        "headerParametersJson": "={\n  \"Authorization\": \"Bearer {{$env.AIRTABLE_API_KEY}}\",\n  \"Content-Type\": \"application/json\"\n}"
+      },
+      "id": "HTTP_Fetch_Prefs",
+      "name": "HTTP Fetch Preferences",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        760,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "GET",
+        "url": "https://api.airtable.com/v0/{{$env.AIRTABLE_BASE_ID}}/Messages?filterByFormula={{encodeURIComponent('{user_id}=' + $json.user_id)}}&sort[0][field]=timestamp&sort[0][direction]=asc&maxRecords=10",
+        "jsonParameters": false,
+        "options": {
+          "fullResponse": false
+        },
+        "sendHeaders": true,
+        "headerParametersJson": "={\n  \"Authorization\": \"Bearer {{$env.AIRTABLE_API_KEY}}\",\n  \"Content-Type\": \"application/json\"\n}"
+      },
+      "id": "HTTP_Fetch_History",
+      "name": "HTTP Fetch Last 10 Messages",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        760,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const body = $input.first().json;\nconst inputs = $input.all();\n// inputs[1]: prefs list, inputs[2]: history list (depending on wiring)\nconst prefsList = inputs[1]?.json?.records || [];\nconst historyList = inputs[2]?.json?.records || [];\n\nconst prefs = prefsList.length ? prefsList[0].fields : {};\nconst nativeLanguage = String(prefs.native_language || '');\nconst targetLanguage = String(prefs.target_language || '');\nconst topic = String(prefs.topic || '');\nconst aiMood = String(prefs.ai_mood || '');\n\nconst messages = historyList.map(r => ({\n  role: String(r.fields.role || ''),\n  content: String(r.fields.content || ''),\n  timestamp: r.createdTime || ''\n}));\nmessages.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));\n\nconst userMessage = String(body.message || '');\n\nconst systemInstructions = `\nYou are a personalized ${targetLanguage} tutor for a ${nativeLanguage} speaker.\nTopic: ${topic}. Mood: ${aiMood}.\nRules:\n- Reply concise (2-4 sentences).\n- Include exactly 1 short example.\n- Include exactly 1 multiple-choice quiz with 3 options and a correct answer_index.\n- Return ONLY valid JSON. No markdown, no extra text, no code fences.\nOutput must match exactly:\n{\n  \\\"reply\\\": \\\"string\\\",\n  \\\"example\\\": \\\"string\\\",\n  \\\"quiz\\\": [\n    {\\\"q\\\":\\\"string\\\",\\\"options\\\":[\\\"string\\\",\\\"string\\\",\\\"string\\\"],\\\"answer_index\\\":0}\n  ]\n}\n`;\n\nconst conversation = messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');\nconst prompt = `${systemInstructions}\nConversation history (oldest to newest):\n${conversation}\n\nNew user message:\n${userMessage}\n`;\n\nreturn [{ json: { system: systemInstructions.trim(), user: prompt.trim(), targetLanguage } }];"
+      },
+      "id": "Fn_Build_Prompt",
+      "name": "Function Build Prompt",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "jsonParameters": true,
+        "options": {
+          "fullResponse": false
+        },
+        "sendHeaders": true,
+        "headerParametersJson": "={\n  \"Authorization\": \"Bearer {{$env.OPENAI_API_KEY}}\",\n  \"Content-Type\": \"application/json\"\n}",
+        "sendBody": true,
+        "bodyParametersJson": "={\n  \"model\": \"gpt-4o-mini\",\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"{{$json.system}}\" },\n    { \"role\": \"user\", \"content\": \"{{$json.user}}\" }\n  ]\n}"
+      },
+      "id": "HTTP_OpenAI_Chat",
+      "name": "HTTP OpenAI Chat (JSON)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1300,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const res = $json;\nlet content = '';\nif (res.choices && res.choices[0] && res.choices[0].message) {\n  content = res.choices[0].message.content || '';\n} else if (res.message && res.message.content) {\n  content = res.message.content;\n} else if (res.content) {\n  content = res.content;\n}\nlet parsed;\nif (typeof content === 'string') {\n  try { parsed = JSON.parse(content); } catch (e) { parsed = null; }\n} else { parsed = content; }\nif (!parsed || typeof parsed !== 'object') { throw new Error('AI did not return valid JSON.'); }\nconst { reply, example, quiz } = parsed;\nif (typeof reply !== 'string' || typeof example !== 'string' || !Array.isArray(quiz) || quiz.length !== 1) {\n  throw new Error('AI JSON invalid: require reply, example, and exactly 1 quiz item.'); }\nconst q = quiz[0];\nif (!q || typeof q.q !== 'string' || !Array.isArray(q.options) || q.options.length !== 3 || typeof q.answer_index !== 'number' || q.answer_index < 0 || q.answer_index > 2) {\n  throw new Error('Quiz item invalid: require string q, 3 options, and answer_index 0..2.'); }\nreturn [{ json: { reply, example, quiz } }];"
+      },
+      "id": "Fn_Parse_AI",
+      "name": "Function Parse AI JSON",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "https://api.airtable.com/v0/{{$env.AIRTABLE_BASE_ID}}/Messages",
+        "jsonParameters": true,
+        "options": {
+          "fullResponse": false
+        },
+        "sendHeaders": true,
+        "headerParametersJson": "={\n  \"Authorization\": \"Bearer {{$env.AIRTABLE_API_KEY}}\",\n  \"Content-Type\": \"application/json\"\n}",
+        "sendBody": true,
+        "bodyParametersJson": "={\n  \"fields\": {\n    \"user_id\": \"{{$node['Set Normalize'].json['user_id']}}\",\n    \"role\": \"assistant\",\n    \"content\": \"{{$json.reply}}\"\n  }\n}"
+      },
+      "id": "HTTP_Save_Assistant",
+      "name": "HTTP Save Assistant Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1820,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Map target language to a reasonable default voice for ElevenLabs.\n// Fallback to a popular voice if unmapped.\nconst languageToVoiceId = {\n  English: '21m00Tcm4TlvDq8ikWAM' // Rachel\n};\nconst targetLanguage = $node['Function Build Prompt'].json.targetLanguage || 'English';\nconst voiceId = languageToVoiceId[targetLanguage] || '21m00Tcm4TlvDq8ikWAM';\nconst text = $node['Function Parse AI JSON'].json.reply;\nreturn [{ json: { voiceId, text } }];"
+      },
+      "id": "Fn_Select_TTS_Lang",
+      "name": "Function Select TTS Lang",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        1820,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "none",
+        "requestMethod": "POST",
+        "url": "={{ 'https://api.elevenlabs.io/v1/text-to-speech/' + $json[\"voiceId\"] + '?output_format=mp3_44100_128' }}",
+        "jsonParameters": true,
+        "options": {
+          "response": "file",
+          "fullResponse": false,
+          "binaryPropertyName": "data"
+        },
+        "sendHeaders": true,
+        "headerParametersJson": "={\n  \"xi-api-key\": \"{{$env.ELEVENLABS_API_KEY}}\",\n  \"Accept\": \"audio/mpeg\",\n  \"Content-Type\": \"application/json\"\n}",
+        "sendBody": true,
+        "bodyParametersJson": "={\n  \"text\": \"{{ $json.text }}\",\n  \"model_id\": \"eleven_multilingual_v2\"\n}"
+      },
+      "id": "ElevenLabs_TTS",
+      "name": "ElevenLabs TTS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2080,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "responseMode": "onReceived",
+        "responseData": "",
+        "options": {
+          "responseCode": 200,
+          "responseData": {
+            "response": "binary",
+            "binaryPropertyName": "data",
+            "headers": {
+              "entries": [
+                { "name": "Content-Type", "value": "audio/mpeg" },
+                { "name": "Content-Disposition", "value": "attachment; filename=\"reply.mp3\"" }
+              ]
+            }
+          }
+        }
+      },
+      "id": "Respond_Tutor",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2340,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook /tutor": { "main": [[ { "node": "Set Normalize", "type": "main", "index": 0 } ]] },
+    "Set Normalize": {
+      "main": [[
+        { "node": "HTTP Save User Message", "type": "main", "index": 0 },
+        { "node": "HTTP Fetch Preferences", "type": "main", "index": 0 },
+        { "node": "HTTP Fetch Last 10 Messages", "type": "main", "index": 0 }
+      ]]
+    },
+    "HTTP Fetch Preferences": { "main": [[ { "node": "Function Build Prompt", "type": "main", "index": 0 } ]] },
+    "HTTP Fetch Last 10 Messages": { "main": [[ { "node": "Function Build Prompt", "type": "main", "index": 0 } ]] },
+    "Function Build Prompt": { "main": [[ { "node": "HTTP OpenAI Chat (JSON)", "type": "main", "index": 0 } ]] },
+    "HTTP OpenAI Chat (JSON)": { "main": [[ { "node": "Function Parse AI JSON", "type": "main", "index": 0 } ]] },
+    "Function Parse AI JSON": {
+      "main": [[
+        { "node": "HTTP Save Assistant Reply", "type": "main", "index": 0 },
+        { "node": "Function Select TTS Lang", "type": "main", "index": 0 }
+      ]]
+    },
+    "Function Select TTS Lang": { "main": [[ { "node": "ElevenLabs TTS", "type": "main", "index": 0 } ]] },
+    "ElevenLabs TTS": { "main": [[ { "node": "Respond to Webhook", "type": "main", "index": 0 } ]] }
+  },
+  "pinData": {},
+  "meta": { "instanceId": "" },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "staticData": null
+}
