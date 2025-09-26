@@ -60,7 +60,7 @@
     {
       "parameters": {
         "operation": "upsert",
-        "application": "BASE_ID_HERE",
+        "application": "{{$env.AIRTABLE_BASE_ID}}",
         "table": "Users",
         "matchField": "user_id",
         "fields": {
@@ -98,7 +98,7 @@
       ],
       "credentials": {
         "airtableTokenApi": {
-          "id": "AIRTABLE_CREDENTIAL_ID",
+          "id": "{{$env.AIRTABLE_CREDENTIAL_ID}}",
           "name": "Airtable PAT"
         }
       }
