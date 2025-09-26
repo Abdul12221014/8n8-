@@ -1,27 +1,24 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -e
 
-# Ensure this script is executable even if the image was built without chmod
-if [ ! -x "$0" ]; then
-  chmod +x "$0" 2>/dev/null || true
-fi
+# Wait for port to be available
+timeout=30
+while ! nc -z localhost ${PORT:-5678} 2>/dev/null; do
+  if [ $timeout -le 0 ]; then
+    echo "Timed out waiting for port to be available"
+    exit 1
+  fi
+  timeout=$((timeout - 1))
+  sleep 1
+done
 
-# Render provides PORT. n8n expects N8N_PORT. Map it.
-export N8N_PORT=${PORT:-5678}
-
-# Recommended n8n runtime flags for hosted usage
-export N8N_PROTOCOL=${N8N_PROTOCOL:-https}
-export N8N_DIAGNOSTICS_ENABLED=${N8N_DIAGNOSTICS_ENABLED:-false}
-export N8N_PERSONALIZATION_ENABLED=${N8N_PERSONALIZATION_ENABLED:-false}
-export N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=${N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS:-true}
-export N8N_RUNNERS_ENABLED=${N8N_RUNNERS_ENABLED:-true}
-
-export N8N_METRICS_ENABLED=false
-export N8N_USER_MANAGEMENT_DISABLED=true
-export N8N_DEPLOYMENT_TYPE=default
-export NODE_ENV=production
-
-# Start n8n with reduced wait times for faster startup
-exec n8n start --metrics=false --init-timeout=60
+# Start n8n with minimal config
+exec n8n start \
+  --metrics=false \
+  --diagnostics=false \
+  --personalization=false \
+  --security-restrict-wildcards=true \
+  --disable-usage-stats \
+  --disable-error-reporting
 
 

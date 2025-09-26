@@ -1,5 +1,41 @@
 services:
   - type: web
+    name: n8n
+    env: docker
+    plan: starter
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: N8N_PORT
+        fromService:
+          name: n8n
+          type: web
+          property: port
+      - key: N8N_PROTOCOL
+        value: https
+      - key: N8N_HOST
+        fromService:
+          name: n8n
+          type: web
+          property: host
+      - key: WEBHOOK_URL
+        fromService:
+          name: n8n
+          type: web
+          property: host
+      - key: N8N_DIAGNOSTICS_ENABLED
+        value: "false"
+      - key: N8N_PERSONALIZATION_ENABLED
+        value: "false"
+      - key: N8N_USER_MANAGEMENT_DISABLED
+        value: "true"
+      - key: N8N_METRICS_ENABLED
+        value: "false"
+      - key: N8N_LOG_LEVEL
+        value: error
+      - key: GENERIC_TIMEZONE
+        value: UTC
     name: n8n-tutor
     env: docker
     plan: free
