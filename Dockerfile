@@ -13,7 +13,12 @@ COPY scripts/start_render.sh /data/scripts/start_render.sh
 ENV N8N_DIAGNOSTICS_ENABLED=false \
     N8N_PERSONALIZATION_ENABLED=false \
     N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true \
-    N8N_RUNNERS_ENABLED=true
+    N8N_RUNNERS_ENABLED=true \
+    N8N_METRICS_ENABLED=false \
+    N8N_USER_MANAGEMENT_DISABLED=true \
+    N8N_DEPLOYMENT_TYPE=default \
+    NODE_ENV=production \
+    N8N_INIT_TIMEOUT=60
 
 # Render provides PORT. We will set N8N_PORT to PORT at runtime via env.
 # Expose is informational only for Docker; Render routes to $PORT.

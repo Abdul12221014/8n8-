@@ -16,6 +16,12 @@ export N8N_PERSONALIZATION_ENABLED=${N8N_PERSONALIZATION_ENABLED:-false}
 export N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=${N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS:-true}
 export N8N_RUNNERS_ENABLED=${N8N_RUNNERS_ENABLED:-true}
 
-exec n8n start
+export N8N_METRICS_ENABLED=false
+export N8N_USER_MANAGEMENT_DISABLED=true
+export N8N_DEPLOYMENT_TYPE=default
+export NODE_ENV=production
+
+# Start n8n with reduced wait times for faster startup
+exec n8n start --metrics=false --init-timeout=60
 
 
