@@ -1,8 +1,11 @@
-# Use a specific version for better stability
-FROM n8nio/n8n:0.234.0-debian
+# Use a specific version with Ubuntu base
+FROM n8nio/n8n:0.234.0
 
 # Install netcat for port checking
-RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends netcat-traditional && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set environment variables
 ENV NODE_ENV=production \

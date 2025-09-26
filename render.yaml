@@ -1,52 +1,24 @@
 services:
   - type: web
-    name: n8n
-    env: docker
-    plan: starter
-    healthCheckPath: /healthz
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: N8N_PORT
-        fromService:
-          name: n8n
-          type: web
-          property: port
-      - key: N8N_PROTOCOL
-        value: https
-      - key: N8N_HOST
-        fromService:
-          name: n8n
-          type: web
-          property: host
-      - key: WEBHOOK_URL
-        fromService:
-          name: n8n
-          type: web
-          property: host
-      - key: N8N_DIAGNOSTICS_ENABLED
-        value: "false"
-      - key: N8N_PERSONALIZATION_ENABLED
-        value: "false"
-      - key: N8N_USER_MANAGEMENT_DISABLED
-        value: "true"
-      - key: N8N_METRICS_ENABLED
-        value: "false"
-      - key: N8N_LOG_LEVEL
-        value: error
-      - key: GENERIC_TIMEZONE
-        value: UTC
     name: n8n-tutor
     env: docker
     plan: free
     autoDeploy: true
-    healthCheckPath: /
+    healthCheckPath: /healthz
     dockerfilePath: Dockerfile
+    startCommand: /data/scripts/start_render.sh
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+      targetMemoryPercent: 80
+    healthCheckTimeout: 180
     disks:
       - name: n8n-data
         mountPath: /home/node/.n8n
         sizeGB: 1
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: N8N_PROTOCOL
         value: https
       - key: N8N_HOST
@@ -68,9 +40,20 @@ services:
         value: "false"
       - key: N8N_PERSONALIZATION_ENABLED
         value: "false"
+      - key: N8N_USER_MANAGEMENT_DISABLED
+        value: "true"
+      - key: N8N_METRICS_ENABLED
+        value: "false"
       - key: N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS
         value: "true"
-      - key: N8N_RUNNERS_ENABLED
-        value: "true"
+      - key: N8N_LOG_LEVEL
+        value: error
+      - key: GENERIC_TIMEZONE
+        value: UTC
+      - key: N8N_PORT
+        fromService:
+          type: web
+          name: n8n-tutor
+          property: port
 
 
